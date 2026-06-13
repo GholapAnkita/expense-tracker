@@ -41,6 +41,8 @@ const PIE_COLORS = [
 
 const BAR_COLORS = ["#0ea5e9", "#38bdf8", "#7dd3fc", "#bae6fd", "#e0f2fe"];
 
+import { useState } from "react";
+
 export const Dashboard = ({
   expenses,
   budget,
@@ -52,7 +54,7 @@ export const Dashboard = ({
     month: "long",
   }).format(new Date());
 
-  const monthlyExpenses = useMemo(
+  const monthlyTransactions = useMemo(
     () =>
       expenses.filter((exp) => {
         const d = new Date(exp.date);
@@ -61,26 +63,47 @@ export const Dashboard = ({
     [expenses, currentMonth, currentYear],
   );
 
-  const totalMonthly = useMemo(
+  const monthlyExpenses = useMemo(
+    () => monthlyTransactions.filter((t) => t.type !== "income"),
+    [monthlyTransactions],
+  );
+
+  const monthlyIncome = useMemo(
+    () => monthlyTransactions.filter((t) => t.type === "income"),
+    [monthlyTransactions],
+  );
+
+  const totalMonthlyExpenses = useMemo(
     () => monthlyExpenses.reduce((acc, cur) => acc + cur.amount, 0),
     [monthlyExpenses],
   );
 
+  const totalMonthlyIncome = useMemo(
+    () => monthlyIncome.reduce((acc, cur) => acc + cur.amount, 0),
+    [monthlyIncome],
+  );
+
+  const netSavings = totalMonthlyIncome - totalMonthlyExpenses;
+
+  const [chartType, setChartType] = useState<"expense" | "income">("expense");
+
   const categoryTotals = useMemo(() => {
     const totals: Record<string, number> = {};
-    monthlyExpenses.forEach((exp) => {
+    const list = chartType === "income" ? monthlyIncome : monthlyExpenses;
+    list.forEach((exp) => {
       totals[exp.category] = (totals[exp.category] || 0) + exp.amount;
     });
     return Object.entries(totals).map(([name, value]) => ({ name, value }));
-  }, [monthlyExpenses]);
+  }, [monthlyIncome, monthlyExpenses, chartType]);
 
   const chartData = useMemo(
     () => [...categoryTotals].sort((a, b) => b.value - a.value),
     [categoryTotals],
   );
 
-  const budgetProgress = budget > 0 ? (totalMonthly / budget) * 100 : 0;
-  const isOverBudget = totalMonthly > budget;
+  const budgetProgress = budget > 0 ? (totalMonthlyExpenses / budget) * 100 : 0;
+  const isOverBudget = totalMonthlyExpenses > budget;
+  const isWarningBudget = totalMonthlyExpenses >= budget * 0.8 && totalMonthlyExpenses <= budget;
 
   const highestCategory = useMemo(() => {
     if (!categoryTotals.length) return null;
@@ -91,12 +114,60 @@ export const Dashboard = ({
 
   return (
     <div className="space-y-6">
+      {/* ── Budget Alerts ── */}
+      {isOverBudget && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-3 p-4 bg-rose-50 border border-rose-100 text-rose-850 rounded-2xl shadow-sm"
+        >
+          <AlertCircle className="text-rose-500 shrink-0" size={20} />
+          <div className="text-sm text-rose-800">
+            <span className="font-semibold">Budget Exceeded!</span> You have spent {formatCurrency(totalMonthlyExpenses)} which exceeds your monthly budget of {formatCurrency(budget)}.
+          </div>
+        </motion.div>
+      )}
+      {isWarningBudget && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex items-center gap-3 p-4 bg-amber-50 border border-amber-100 text-amber-850 rounded-2xl shadow-sm"
+        >
+          <AlertCircle className="text-amber-500 shrink-0" size={20} />
+          <div className="text-sm text-amber-800">
+            <span className="font-semibold">Warning:</span> You have used {Math.round(budgetProgress)}% of your monthly budget ({formatCurrency(totalMonthlyExpenses)} spent of {formatCurrency(budget)}).
+          </div>
+        </motion.div>
+      )}
+
       {/* ── Stat Cards ── */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Monthly Income */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="p-2.5 bg-emerald-50 rounded-xl">
+              <TrendingUp className="text-emerald-500" size={20} />
+            </div>
+            <span className="flex items-center gap-1 text-xs font-medium text-gray-400">
+              <Calendar size={12} />
+              {currentMonthName}
+            </span>
+          </div>
+          <p className="text-sm text-gray-500 mb-1">Monthly Income</p>
+          <p className="text-2xl font-semibold text-gray-900">
+            {formatCurrency(totalMonthlyIncome)}
+          </p>
+        </motion.div>
+
         {/* Monthly Spending */}
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.04 }}
           className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm"
         >
           <div className="flex items-center justify-between mb-4">
@@ -108,9 +179,34 @@ export const Dashboard = ({
               {currentMonthName}
             </span>
           </div>
-          <p className="text-sm text-gray-500 mb-1">Monthly spending</p>
-          <p className="text-3xl font-semibold text-gray-900">
-            {formatCurrency(totalMonthly)}
+          <p className="text-sm text-gray-500 mb-1">Monthly Expenses</p>
+          <p className="text-2xl font-semibold text-gray-900">
+            {formatCurrency(totalMonthlyExpenses)}
+          </p>
+        </motion.div>
+
+        {/* Net Savings */}
+        <motion.div
+          initial={{ opacity: 0, y: 16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.08 }}
+          className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className={cn(
+              "p-2.5 rounded-xl",
+              netSavings >= 0 ? "bg-emerald-50" : "bg-rose-50"
+            )}>
+              <TrendingUp className={netSavings >= 0 ? "text-emerald-500" : "text-rose-500 -scale-y-100"} size={20} />
+            </div>
+            <span className="text-xs font-medium text-gray-400">Net Balance</span>
+          </div>
+          <p className="text-sm text-gray-500 mb-1">Net Savings</p>
+          <p className={cn(
+            "text-2xl font-semibold",
+            netSavings >= 0 ? "text-emerald-600" : "text-rose-600"
+          )}>
+            {formatCurrency(netSavings)}
           </p>
         </motion.div>
 
@@ -118,7 +214,7 @@ export const Dashboard = ({
         <motion.div
           initial={{ opacity: 0, y: 16 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.08 }}
+          transition={{ delay: 0.12 }}
           className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm"
         >
           <div className="flex items-center justify-between mb-4">
@@ -143,13 +239,13 @@ export const Dashboard = ({
           <p className="text-sm text-gray-500 mb-1">
             Budget goal: {formatCurrency(budget)}
           </p>
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-3xl font-semibold text-gray-900">
+          <div className="flex items-center justify-between mb-2">
+            <p className="text-2xl font-semibold text-gray-900">
               {Math.min(100, Math.round(budgetProgress))}%
             </p>
             {isOverBudget && (
-              <span className="flex items-center gap-1 text-xs font-medium text-rose-600 bg-rose-50 px-2.5 py-1 rounded-full">
-                <AlertCircle size={12} />
+              <span className="flex items-center gap-1 text-xs font-medium text-rose-600 bg-rose-50 px-2.5 py-0.5 rounded-full">
+                <AlertCircle size={10} />
                 Exceeded
               </span>
             )}
@@ -166,30 +262,30 @@ export const Dashboard = ({
             />
           </div>
         </motion.div>
+      </div>
 
-        {/* Top Category */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.16 }}
-          className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <div className="p-2.5 bg-amber-50 rounded-xl">
-              <TrendingUp className="text-amber-500" size={20} />
-            </div>
-            <span className="text-xs font-medium text-gray-400">Insights</span>
-          </div>
-          <p className="text-sm text-gray-500 mb-1">Top category</p>
-          <p className="text-3xl font-semibold text-gray-900 truncate">
-            {highestCategory ? highestCategory.name : "No data"}
-          </p>
-          <p className="text-sm text-gray-400 mt-1">
-            {highestCategory
-              ? `${formatCurrency(highestCategory.value)} this month`
-              : "Start tracking expenses"}
-          </p>
-        </motion.div>
+      {/* ── Chart Header with toggle ── */}
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white p-5 rounded-2xl border border-gray-100 shadow-sm">
+        <div>
+          <h3 className="text-base font-semibold text-gray-900">Visual Insights</h3>
+          <p className="text-xs text-gray-400">Distribution of your {chartType === "income" ? "income" : "spending"}</p>
+        </div>
+        <div className="flex bg-gray-100 p-1 rounded-xl gap-1 shrink-0 self-end sm:self-auto">
+          {(["expense", "income"] as const).map((t) => (
+            <button
+              key={t}
+              onClick={() => setChartType(t)}
+              className={cn(
+                "px-4 py-1.5 rounded-lg text-xs font-semibold capitalize transition-all",
+                chartType === t
+                  ? "bg-white text-gray-900 shadow-sm"
+                  : "text-gray-400 hover:text-gray-600",
+              )}
+            >
+              {t}s
+            </button>
+          ))}
+        </div>
       </div>
 
       {/* ── Charts ── */}
@@ -198,16 +294,16 @@ export const Dashboard = ({
         <motion.div
           initial={{ opacity: 0, scale: 0.97 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.24 }}
+          transition={{ delay: 0.16 }}
           className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm min-h-90 flex flex-col"
         >
-          <h3 className="text-base font-semibold text-gray-900 mb-6">
-            Category mix
+          <h3 className="text-base font-semibold text-gray-900 mb-6 capitalize">
+            {chartType} category mix
           </h3>
           <div className="flex-1 w-full">
             {chartData.length === 0 ? (
               <div className="h-full flex items-center justify-center text-sm text-gray-400">
-                No data yet
+                No data yet for this type
               </div>
             ) : (
               <ResponsiveContainer width="100%" height="100%" minHeight={240}>
@@ -251,7 +347,7 @@ export const Dashboard = ({
                     {chartData.map((_, index) => (
                       <Cell
                         key={`cell-${index}`}
-                        fill={BAR_COLORS[index % BAR_COLORS.length]}
+                        fill={chartType === "income" ? ["#10b981", "#34d399", "#6ee7b7", "#a7f3d0", "#d1fae5"][index % 5] : BAR_COLORS[index % BAR_COLORS.length]}
                       />
                     ))}
                   </Bar>
@@ -265,11 +361,11 @@ export const Dashboard = ({
         <motion.div
           initial={{ opacity: 0, scale: 0.97 }}
           animate={{ opacity: 1, scale: 1 }}
-          transition={{ delay: 0.32 }}
+          transition={{ delay: 0.20 }}
           className="bg-white rounded-2xl border border-gray-100 p-6 shadow-sm min-h-90 flex flex-col"
         >
-          <h3 className="text-base font-semibold text-gray-900 mb-6">
-            Budget split
+          <h3 className="text-base font-semibold text-gray-900 mb-6 capitalize">
+            {chartType} split
           </h3>
           <div className="flex-1 w-full flex items-center justify-center relative">
             {chartData.length === 0 ? (
@@ -289,7 +385,7 @@ export const Dashboard = ({
                     {chartData.map((_, index) => (
                       <Cell
                         key={`cell-${index}`}
-                        fill={PIE_COLORS[index % PIE_COLORS.length]}
+                        fill={chartType === "income" ? ["#10b981", "#059669", "#34d399", "#6ee7b7", "#a7f3d0"][index % 5] : PIE_COLORS[index % PIE_COLORS.length]}
                       />
                     ))}
                   </Pie>
@@ -311,10 +407,10 @@ export const Dashboard = ({
             {/* Centre label */}
             <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
               <span className="text-xs font-medium text-gray-400 uppercase tracking-widest">
-                Spent
+                {chartType === "income" ? "Earned" : "Spent"}
               </span>
               <span className="text-2xl font-semibold text-gray-900">
-                {formatCurrency(totalMonthly)}
+                {formatCurrency(chartType === "income" ? totalMonthlyIncome : totalMonthlyExpenses)}
               </span>
             </div>
           </div>
