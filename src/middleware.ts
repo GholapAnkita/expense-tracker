@@ -28,9 +28,23 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  if (path === "/admin") {
+    if (!token) {
+      return NextResponse.redirect(new URL("/login", request.nextUrl));
+    }
+    try {
+      const { payload } = await jwtVerify(token, JWT_SECRET);
+      if (payload.role !== "admin") {
+        return NextResponse.redirect(new URL("/", request.nextUrl));
+      }
+    } catch (err) {
+      return NextResponse.redirect(new URL("/login", request.nextUrl));
+    }
+  }
+
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/", "/login", "/api/expenses/:path*", "/api/budget/:path*"],
+  matcher: ["/", "/login", "/admin", "/api/expenses/:path*", "/api/budget/:path*"],
 };

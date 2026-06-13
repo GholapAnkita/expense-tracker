@@ -2,9 +2,11 @@ import { NextResponse } from 'next/server';
 import dbConnect from '@/lib/mongodb';
 import User from '@/models/User';
 import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import { SignJWT } from 'jose';
 
-const JWT_SECRET = process.env.JWT_SECRET || 'fallback-secret';
+const JWT_SECRET = new TextEncoder().encode(
+  process.env.JWT_SECRET || 'fallback-secret'
+);
 
 export async function POST(request: Request) {
   try {
@@ -21,7 +23,19 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid credentials' }, { status: 401 });
     }
 
-    const token = jwt.sign({ userId: user._id }, JWT_SECRET, { expiresIn: '7d' });
+    // Auto-promote specific email to admin
+    if (user.email === 'ankitagholap100@gmail.com' && user.role !== 'admin') {
+      user.role = 'admin';
+      await user.save();
+    }
+
+    const token = await new SignJWT({ 
+      userId: user._id.toString(),
+      role: user.role 
+    })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setExpirationTime('7d')
+      .sign(JWT_SECRET);
 
     const response = NextResponse.json({ 
       message: 'Logged in successfully',
@@ -38,6 +52,7 @@ export async function POST(request: Request) {
 
     return response;
   } catch (error) {
+    console.error('Login error:', error);
     return NextResponse.json({ error: 'Failed to login' }, { status: 500 });
   }
 }

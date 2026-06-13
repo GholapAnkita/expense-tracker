@@ -18,3 +18,20 @@ export async function getUserIdFromToken() {
     return null;
   }
 }
+
+export async function getUserFromToken() {
+  const cookieStore = await cookies();
+  const token = cookieStore.get('token')?.value;
+
+  if (!token) return null;
+
+  try {
+    const { payload } = await jwtVerify(token, JWT_SECRET);
+    return {
+      userId: payload.userId as string,
+      role: (payload.role as string) || 'user',
+    };
+  } catch (error) {
+    return null;
+  }
+}

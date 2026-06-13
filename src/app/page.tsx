@@ -9,6 +9,7 @@ import {
   Settings,
   Loader2,
   LogOut,
+  ShieldCheck,
 } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useRouter } from "next/navigation";
@@ -24,6 +25,7 @@ export default function Home() {
   const [expenses, setExpenses] = useState<Expense[]>([]);
   const [budget, setBudget] = useState<number>(5000);
   const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState<{ name: string; role: string } | null>(null);
   const [activeTab, setActiveTab] = useState<"dashboard" | "list">("dashboard");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [isBudgetOpen, setIsBudgetOpen] = useState(false);
@@ -33,9 +35,10 @@ export default function Home() {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [expensesRes, budgetRes] = await Promise.all([
+        const [expensesRes, budgetRes, userRes] = await Promise.all([
           fetch("/api/expenses"),
           fetch("/api/budget"),
+          fetch("/api/auth/me"),
         ]);
 
         if (expensesRes.status === 401 || budgetRes.status === 401) {
@@ -48,6 +51,11 @@ export default function Home() {
           const budgetData = await budgetRes.json();
           setExpenses(expensesData);
           setBudget(budgetData.amount);
+        }
+
+        if (userRes.ok) {
+          const userData = await userRes.json();
+          setUser(userData);
         }
       } catch (error) {
         console.error("Failed to fetch data:", error);
@@ -174,6 +182,16 @@ export default function Home() {
         </div>
 
         <div className="flex items-center gap-2">
+          {user?.role === "admin" && (
+            <button
+              onClick={() => router.push("/admin")}
+              className="flex items-center gap-2 px-3 py-2 rounded-lg bg-sky-50 text-sky-600 hover:bg-sky-100 transition-all active:scale-95 text-xs font-semibold"
+              title="Admin Panel"
+            >
+              <ShieldCheck size={16} />
+              <span className="hidden sm:inline">Admin</span>
+            </button>
+          )}
           <ThemeToggle />
           <button
             onClick={() => setIsBudgetOpen(true)}

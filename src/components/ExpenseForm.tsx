@@ -21,6 +21,7 @@ const EXPENSE_CATEGORIES: Category[] = [
   "Extra Travelling",
   "Vegetables",
   "Outside Food",
+  "Other",
 ];
 
 const INCOME_CATEGORIES: Category[] = [
