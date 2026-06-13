@@ -4,7 +4,12 @@ export type Category =
   | 'Daily Travelling' 
   | 'Extra Travelling' 
   | 'Vegetables' 
-  | 'Outside Food';
+  | 'Outside Food'
+  | 'Salary'
+  | 'Freelance'
+  | 'Investment'
+  | 'Gifts'
+  | 'Other Income';
 
 export interface Expense {
   id: string;
@@ -12,9 +17,11 @@ export interface Expense {
   category: Category;
   amount: number;
   notes?: string;
+  type: 'expense' | 'income';
 }
 
 export interface Budget {
   amount: number;
   month: string; // YYYY-MM format
 }
+
