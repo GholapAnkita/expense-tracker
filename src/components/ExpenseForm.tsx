@@ -14,7 +14,7 @@ interface ExpenseFormProps {
   editingExpense?: Expense | null;
 }
 
-const CATEGORIES: Category[] = [
+const EXPENSE_CATEGORIES: Category[] = [
   "Room Rent",
   "Travel to Home",
   "Daily Travelling",
@@ -22,6 +22,14 @@ const CATEGORIES: Category[] = [
   "Vegetables",
   "Outside Food",
   "Other",
+];
+
+const INCOME_CATEGORIES: Category[] = [
+  "Salary",
+  "Freelance",
+  "Investment",
+  "Gifts",
+  "Other Income",
 ];
 
 const inputClass =
@@ -39,6 +47,7 @@ export const ExpenseForm = ({
     category: "Daily Travelling",
     amount: 0,
     notes: "",
+    type: "expense",
   });
 
   useEffect(() => {
@@ -48,6 +57,7 @@ export const ExpenseForm = ({
         category: editingExpense.category,
         amount: editingExpense.amount,
         notes: editingExpense.notes || "",
+        type: editingExpense.type || "expense",
       });
     } else {
       setFormData({
@@ -55,6 +65,7 @@ export const ExpenseForm = ({
         category: "Daily Travelling",
         amount: 0,
         notes: "",
+        type: "expense",
       });
     }
   }, [editingExpense, isOpen]);
@@ -68,6 +79,9 @@ export const ExpenseForm = ({
     }
     onClose();
   };
+
+  const categoriesToRender =
+    formData.type === "income" ? INCOME_CATEGORIES : EXPENSE_CATEGORIES;
 
   return (
     <AnimatePresence>
@@ -93,7 +107,9 @@ export const ExpenseForm = ({
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-5 border-b border-gray-100">
               <h2 className="text-base font-semibold text-gray-900">
-                {editingExpense ? "Edit expense" : "Add expense"}
+                {editingExpense 
+                  ? (formData.type === "income" ? "Edit income" : "Edit expense")
+                  : (formData.type === "income" ? "Add income" : "Add expense")}
               </h2>
               <button
                 onClick={onClose}
@@ -105,6 +121,36 @@ export const ExpenseForm = ({
 
             {/* Form */}
             <form onSubmit={handleSubmit} className="px-6 py-5 space-y-4">
+              {/* Type Toggle */}
+              <div className="space-y-1.5">
+                <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
+                  Transaction Type
+                </label>
+                <div className="flex bg-gray-100 p-1 rounded-xl w-full gap-1">
+                  {(["expense", "income"] as const).map((t) => (
+                    <button
+                      key={t}
+                      type="button"
+                      onClick={() => {
+                        setFormData({
+                          ...formData,
+                          type: t,
+                          category: t === "expense" ? "Daily Travelling" : "Salary",
+                        });
+                      }}
+                      className={cn(
+                        "flex-1 py-2 rounded-lg text-xs font-semibold capitalize transition-all",
+                        formData.type === t
+                          ? "bg-white text-gray-900 shadow-sm"
+                          : "text-gray-400 hover:text-gray-600",
+                      )}
+                    >
+                      {t}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               {/* Amount */}
               <div className="space-y-1.5">
                 <label className="text-xs font-medium text-gray-500 uppercase tracking-wide">
@@ -120,7 +166,7 @@ export const ExpenseForm = ({
                     onChange={(e) =>
                       setFormData({
                         ...formData,
-                        amount: parseFloat(e.target.value),
+                        amount: parseFloat(e.target.value) || 0,
                       })
                     }
                     className={cn(
@@ -177,7 +223,7 @@ export const ExpenseForm = ({
                       )}
                       required
                     >
-                      {CATEGORIES.map((cat) => (
+                      {categoriesToRender.map((cat) => (
                         <option key={cat} value={cat}>
                           {cat}
                         </option>
@@ -216,7 +262,9 @@ export const ExpenseForm = ({
                 type="submit"
                 className="w-full py-3 bg-sky-500 hover:bg-sky-600 active:scale-[0.98] text-white rounded-xl font-semibold text-sm transition-all shadow-sm shadow-sky-500/20 mt-2"
               >
-                {editingExpense ? "Update expense" : "Add expense"}
+                {editingExpense 
+                  ? (formData.type === "income" ? "Update income" : "Update expense")
+                  : (formData.type === "income" ? "Add income" : "Add expense")}
               </button>
             </form>
           </motion.div>

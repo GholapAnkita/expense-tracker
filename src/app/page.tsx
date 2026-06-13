@@ -4,8 +4,8 @@ import { useState, useEffect } from "react";
 import {
   Plus,
   Wallet,
-  PieChart as PieChartIcon,
-  List as ListIcon,
+  LayoutDashboard,
+  History,
   Settings,
   Loader2,
   LogOut,
@@ -224,9 +224,9 @@ export default function Home() {
             )}
           >
             {tab === "dashboard" ? (
-              <PieChartIcon size={15} />
+              <LayoutDashboard size={15} />
             ) : (
-              <ListIcon size={15} />
+              <History size={15} />
             )}
             {tab === "dashboard" ? "Stats" : "History"}
           </button>
