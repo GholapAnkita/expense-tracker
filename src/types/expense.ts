@@ -5,15 +5,12 @@ export type Category =
   | 'Extra Travelling' 
   | 'Vegetables' 
   | 'Outside Food'
-<<<<<<< HEAD
-  | 'Other';
-=======
+  | 'Other'
   | 'Salary'
   | 'Freelance'
   | 'Investment'
   | 'Gifts'
   | 'Other Income';
->>>>>>> 5b8490d781f9b633e07f7d27a2a635b7934ca933
 
 export interface Expense {
   id: string;
